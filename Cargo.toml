@@ -42,6 +42,8 @@ rustc-hash = { version = "2.1", default-features = false }
 smoltcp = { version = "0.12.0", default-features = false, features = ["alloc", "medium-ethernet", "medium-ip", "proto-ipv4", "proto-ipv6", "socket-tcp", "socket-udp"] }
 tock-registers = "0.10.1"
 virtio-drivers = "0.12.0"
+blake2 = { version = "0.10.6", default-features = false }
+chacha20 = { version = "0.10.0", default-features = false, features = ["rng"] }
 
 [build-dependencies]
 time = { version = "0.3.47", features = ["formatting", "macros"] } # For build timestamping via build.rs

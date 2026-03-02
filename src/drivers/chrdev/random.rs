@@ -7,10 +7,11 @@ use crate::{
         fops::FileOps,
         open_file::{FileCtx, OpenFile},
     },
-    kernel::rand::sys_getrandom,
+    kernel::rand::fill_random_bytes,
     kernel_driver,
+    memory::uaccess::copy_to_user_slice,
 };
-use alloc::{boxed::Box, string::ToString, sync::Arc};
+use alloc::{boxed::Box, string::ToString, sync::Arc, vec};
 use async_trait::async_trait;
 use core::{future::Future, pin::Pin};
 use libkernel::{
@@ -34,7 +35,12 @@ impl FileOps for RandomFileOps {
     }
 
     async fn readat(&mut self, buf: UA, count: usize, _offset: u64) -> Result<usize> {
-        sys_getrandom(buf.cast(), count as _, 0).await
+        // TODO: Add an implementation of `/dev/urandom` which doesn't block if
+        // the entropy pool hasn't yet been seeded.
+        let mut kbuf = vec![0u8; count];
+        fill_random_bytes(&mut kbuf).await;
+        copy_to_user_slice(&kbuf, buf).await?;
+        Ok(count)
     }
 
     fn poll_read_ready(&self) -> Pin<Box<dyn Future<Output = Result<()>> + Send>> {

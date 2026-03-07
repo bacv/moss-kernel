@@ -82,7 +82,7 @@ impl Display for ExceptionState {
 global_asm!(include_str!("exceptions.s"));
 
 pub fn default_handler(state: &ExceptionState) {
-    panic!("Unhandled CPU exception.  Program state:\n{}", state);
+    panic!("Unhandled CPU exception.  Program state:\n{state}");
 }
 
 #[unsafe(no_mangle)]

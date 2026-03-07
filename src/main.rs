@@ -115,7 +115,7 @@ async fn launch_init(mut opts: KOptions) {
 
     VFS.mount_root(&root_fs, initrd_block_dev)
         .await
-        .unwrap_or_else(|e| panic!("Failed to mount root FS: {}", e));
+        .unwrap_or_else(|e| panic!("Failed to mount root FS: {e}"));
 
     // Process all automounts.
     for (path, fs) in opts.automounts.iter() {

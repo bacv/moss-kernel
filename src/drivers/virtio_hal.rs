@@ -80,7 +80,7 @@ unsafe impl Hal for VirtioHal {
 
         // Buffer must be in the direct map for this fast translation.
         if vaddr < ArchImpl::PAGE_OFFSET {
-            panic!("virtio share: buffer VA is not in direct map: {:#x}", vaddr);
+            panic!("virtio share: buffer VA is not in direct map: {vaddr:#x}");
         }
 
         (vaddr - ArchImpl::PAGE_OFFSET) as PhysAddr

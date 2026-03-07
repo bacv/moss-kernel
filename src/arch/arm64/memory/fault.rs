@@ -111,9 +111,9 @@ pub fn handle_kernel_mem_fault(exception: Exception, info: AbortIss, state: &mut
     if let Some(far) = info.far
         && KERNEL_STACK_AREA.contains_address(VA::from_value(far as _))
     {
-        panic!("Kernel stack overflow detected.  Context:\n{}", state);
+        panic!("Kernel stack overflow detected.  Context:\n{state}");
     } else {
-        panic!("Kernel memory fault detected.  Context:\n{}", state);
+        panic!("Kernel memory fault detected.  Context:\n{state}");
     }
 }
 

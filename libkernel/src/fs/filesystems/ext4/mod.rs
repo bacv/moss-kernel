@@ -143,7 +143,6 @@ impl DirStream for ReadDirWrapper {
     }
 }
 
-#[expect(clippy::large_enum_variant)]
 enum InodeInner {
     Regular(File),
     Directory(Dir),
@@ -157,7 +156,7 @@ impl InodeInner {
                 InodeInner::Regular(File::open_inode(fs, inode).unwrap())
             }
             ext4plus::FileType::Directory => {
-                InodeInner::Directory(Dir::open(fs.clone(), inode).await.unwrap())
+                InodeInner::Directory(Dir::open_inode(fs, inode).await.unwrap())
             }
             _ => InodeInner::Other(inode),
         }
@@ -170,7 +169,7 @@ impl Deref for InodeInner {
     fn deref(&self) -> &Self::Target {
         match self {
             InodeInner::Regular(f) => f.inode(),
-            InodeInner::Directory(d) => d.as_ref(),
+            InodeInner::Directory(d) => d.inode(),
             InodeInner::Other(i) => i,
         }
     }
@@ -180,7 +179,7 @@ impl DerefMut for InodeInner {
     fn deref_mut(&mut self) -> &mut Self::Target {
         match self {
             InodeInner::Regular(f) => f.inode_mut(),
-            InodeInner::Directory(d) => d.as_mut(),
+            InodeInner::Directory(d) => d.inode_mut(),
             InodeInner::Other(i) => i,
         }
     }
@@ -332,8 +331,8 @@ where
                 .await?;
             InodeInner::Regular(File::open_inode(&fs.inner, inode)?)
         } else if matches!(file_type, FileType::Directory) {
-            let old_links_count = inner_dir.as_ref().links_count();
-            inner_dir.as_mut().set_links_count(old_links_count + 1);
+            let old_links_count = inner_dir.inode().links_count();
+            inner_dir.inode_mut().set_links_count(old_links_count + 1);
             let inode = fs
                 .inner
                 .create_inode(InodeCreationOptions {
@@ -450,7 +449,7 @@ where
             (old_parent_id.inode_id() as u32).try_into().unwrap(),
         )
         .await?;
-        let old_parent_dir = Dir::open(fs.inner.clone(), old_parent_inode).await?;
+        let old_parent_dir = Dir::open_inode(&fs.inner, old_parent_inode).await?;
 
         let inner = self.inner.lock().await;
         let inner_dir = match &*inner {

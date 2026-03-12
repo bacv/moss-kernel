@@ -96,15 +96,21 @@ impl RunQueue {
         self.v_clock.advance(now, self.weight());
 
         let mut prev_task = ptr::null();
+        let mut next_task = None;
         let mut deferred_drops: Vec<RunnableTask> = Vec::new();
 
-        if let Some(cur_task) = self.running_task.take() {
+        if let Some(mut cur_task) = self.running_task.take() {
+            prev_task = Arc::as_ptr(&cur_task.task);
             let state = cur_task.task.state.load(Ordering::Acquire);
             match state {
                 TaskState::Running | TaskState::Woken => {
-                    // requeue for the next time slice.
-                    prev_task = Arc::as_ptr(&cur_task.task);
-                    self.enqueue(cur_task);
+                    if cur_task.tick(now) {
+                        // Deadline exceeded — requeue for the next time slice.
+                        self.enqueue(cur_task);
+                    } else {
+                        // Still has budget — keep running.
+                        next_task = Some(cur_task);
+                    }
                 }
                 TaskState::PendingSleep | TaskState::PendingStop => {
                     // Task wants to deactivate. Drop the RunnableTask now to
@@ -126,7 +132,8 @@ impl RunQueue {
             }
         }
 
-        if let Some(mut next_task) = self.find_next_task(&mut deferred_drops) {
+        if let Some(mut next_task) = next_task.or_else(|| self.find_next_task(&mut deferred_drops))
+        {
             next_task.about_to_execute(now);
 
             if Arc::as_ptr(&next_task.task) != prev_task {
@@ -136,11 +143,11 @@ impl RunQueue {
                 next_task.switch_context();
 
                 next_task.task.reset_last_account(now);
-            }
 
-            CUR_TASK_PTR
-                .borrow_mut()
-                .set_current(Box::as_ptr(&next_task.task.task) as *mut _);
+                CUR_TASK_PTR
+                    .borrow_mut()
+                    .set_current(Box::as_ptr(&next_task.task.task) as *mut _);
+            }
 
             self.running_task = Some(next_task);
         } else {
@@ -214,7 +221,9 @@ impl RunQueue {
 
     /// Inserts `new_task` into this CPU's run-queue.
     pub fn add_work(&mut self, new_task: Arc<Work>) {
-        let new_task = new_task.into_runnable();
+        let mut new_task = new_task.into_runnable();
+
+        new_task.inserting_into_runqueue(self.v_clock.now());
 
         self.total_weight = self.total_weight.saturating_add(new_task.weight() as u64);
 

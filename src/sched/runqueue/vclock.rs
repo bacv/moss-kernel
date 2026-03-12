@@ -16,6 +16,10 @@ impl VClock {
         }
     }
 
+    pub fn now(&self) -> u128 {
+        self.clk
+    }
+
     pub fn is_task_eligible(&self, tsk: &RunnableTask) -> bool {
         tsk.v_eligible.saturating_sub(self.clk) <= VCLOCK_EPSILON
     }
